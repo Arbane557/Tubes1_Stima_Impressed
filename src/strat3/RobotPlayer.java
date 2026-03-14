@@ -75,9 +75,6 @@ public class RobotPlayer {
             rc.getNumberTowers();
             turnCount += 1;  // We have now been alive for one more turn!
 
-            if(rc.getRoundNum() <= 50) towerToBuild = UnitType.LEVEL_ONE_MONEY_TOWER;
-            else towerToBuild = UnitType.LEVEL_ONE_PAINT_TOWER;
-
             if(rc.getType().isRobotType()) {
                 if(turnCount > 1000) rc.disintegrate();
             }
@@ -283,8 +280,12 @@ public class RobotPlayer {
         }
     }
 
-    // Objective: build towers
+    // Objective: build towers and build special resource patterns
     public static void soldierObjective(RobotController rc) throws GameActionException {
+        if(rc.getNumberTowers() < 3 + rc.getRoundNum() / 20 && rc.getNumberTowers() < 6) towerToBuild = UnitType.LEVEL_ONE_MONEY_TOWER;
+        else towerToBuild = UnitType.LEVEL_ONE_PAINT_TOWER;
+
+        rc.setIndicatorString("Doing objective: building " + towerToBuild);
         // Sense information about all visible nearby tiles.
         MapInfo[] nearbyTiles = rc.senseNearbyMapInfos();
         // Search for a nearby ruin to complete.
@@ -342,11 +343,11 @@ public class RobotPlayer {
     public static void mopperObjective(RobotController rc) throws GameActionException {
         if(!rc.isActionReady()) return;
 
-        RobotInfo[] nearbyRobots = rc.senseNearbyRobots(-1, rc.getTeam().opponent());
-        if(nearbyRobots != null) {
+        RobotInfo[] nearbyEnemy = rc.senseNearbyRobots(-1, rc.getTeam().opponent());
+        if(nearbyEnemy != null) {
             RobotInfo target = null;
             int targetDist = Integer.MAX_VALUE;
-            for(RobotInfo robot : nearbyRobots) {
+            for(RobotInfo robot : nearbyEnemy) {
                 int dist = rc.getLocation().distanceSquaredTo(robot.getLocation());
                 if(dist < targetDist) {
                     target = robot;
@@ -367,12 +368,13 @@ public class RobotPlayer {
                     System.out.println("Target attacked at direction: " + targetDir);
                 }
             }
-
-
-            target = null;
-            targetDist = Integer.MAX_VALUE;
-            for(RobotInfo robot : nearbyRobots) {
-                if(robot.getTeam() != rc.getTeam() || robot.getType() == UnitType.MOPPER || robot.getType() == UnitType.SOLDIER || robot.getType() == UnitType.LEVEL_ONE_PAINT_TOWER || robot.getType() == UnitType.LEVEL_TWO_PAINT_TOWER || robot.getType() == UnitType.LEVEL_THREE_PAINT_TOWER)
+        }
+        RobotInfo[] nearbyFriend = rc.senseNearbyRobots(-1, rc.getTeam());
+        if(nearbyFriend != null) {
+            RobotInfo target = null;
+            int targetDist = Integer.MAX_VALUE;
+            for(RobotInfo robot : nearbyFriend) {
+                if(robot.getType() == UnitType.MOPPER || robot.getType() == UnitType.SOLDIER || robot.getType() == UnitType.LEVEL_ONE_PAINT_TOWER || robot.getType() == UnitType.LEVEL_TWO_PAINT_TOWER || robot.getType() == UnitType.LEVEL_THREE_PAINT_TOWER)
                     continue;
                 int dist = rc.getLocation().distanceSquaredTo(robot.getLocation());
                 if(dist < targetDist) {
