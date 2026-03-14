@@ -1,4 +1,4 @@
-package strat3;
+package strat2;
 
 import java.util.Random;
 
@@ -75,9 +75,6 @@ public class RobotPlayer {
             rc.getNumberTowers();
             turnCount += 1;  // We have now been alive for one more turn!
 
-            if(rc.getRoundNum() <= 50) towerToBuild = UnitType.LEVEL_ONE_MONEY_TOWER;
-            else towerToBuild = UnitType.LEVEL_ONE_PAINT_TOWER;
-
             if(rc.getType().isRobotType()) {
                 if(turnCount > 1000) rc.disintegrate();
             }
@@ -95,10 +92,19 @@ public class RobotPlayer {
                     default: runTower(rc); break;
                 }
 
-                if(rc.getActionCooldownTurns() < 10) uselessCount++;
-                else if(uselessCount > 0) uselessCount--;
-            }
-             catch (GameActionException e) {
+                // if(rc.getType().isRobotType()) {
+                //     if(rc.getActionCooldownTurns() < 10) {
+                //         uselessCount += 1;
+                //     }
+                //     else {
+                //         if(uselessCount > 0)
+                //             uselessCount -= 1;
+                //     }
+
+                //     if(uselessCount >= 5) rc.disintegrate();
+                // }
+                
+            } catch (GameActionException e) {
                 // Oh no! It looks like we did something illegal in the Battlecode world. You should
                 // handle GameActionExceptions judiciously, in case unexpected events occur in the game
                 // world. Remember, uncaught exceptions cause your robot to explode!
@@ -127,9 +133,12 @@ public class RobotPlayer {
      * This code is wrapped inside the infinite loop in run(), so it is called once per turn.
      */
     public static void runTower(RobotController rc) throws GameActionException{
-        if(rc.senseNearbyRobots().length < rc.getRoundNum() / 500 + 2) robotToBuild = UnitType.SOLDIER;
+        // Decide which robot to build
+        // Few robots near tower (<= 3): soldier
+        // A lot of robots near tower (>3): mopper & splasher
+        if(rc.senseNearbyRobots().length <= 3) robotToBuild = UnitType.SOLDIER;
         else {
-            if(rc.getRoundNum() % 4 == 0) {
+            if(rc.getRoundNum() % 3 == 0) {
                 robotToBuild = UnitType.MOPPER;
             } 
             else {
@@ -143,12 +152,9 @@ public class RobotPlayer {
 
         System.out.println("Trying to build: " + robotToBuild);
         System.out.println("Can build: " + rc.canBuildRobot(robotToBuild, nextLoc));
-        System.out.println("Chips now: " + rc.getChips() + ", treshold: " + (1000 + UnitType.SPLASHER.moneyCost) + ", Condition: " + (rc.getChips() > 1000 + robotToBuild.moneyCost));
+        System.out.println("Chips now: " + rc.getChips() + ", treshold: " + (1000 + robotToBuild.moneyCost) + ", Condition: " + (rc.getChips() > 1000 + robotToBuild.moneyCost));
 
-        if (rc.canBuildRobot(robotToBuild, nextLoc) && (rc.getChips() > 1000 + UnitType.SPLASHER.moneyCost)){
-            rc.buildRobot(robotToBuild, nextLoc);
-            System.out.println("BUILT A: " + robotToBuild);
-        }
+        forceBuild(robotToBuild, rc);
 
         // Read incoming messages
         Message[] messages = rc.readMessages(-1);
@@ -166,12 +172,6 @@ public class RobotPlayer {
         }
 
         // TODO: can we attack other bots?
-        // RobotInfo[] nearbyRobots = rc.senseNearbyRobots(-1, rc.getTeam().opponent());
-        // for(RobotInfo robot : nearbyRobots) {
-        //     if(!rc.canAttack(robot.getLocation())) break;
-        //     rc.attack(robot.getLocation());
-        //     System.out.println("Tower attacks at: " + robot.getLocation());
-        // }
     }
 
 
@@ -181,8 +181,7 @@ public class RobotPlayer {
      */
     public static void runSoldier(RobotController rc) throws GameActionException{
         // Get paint if paint almost half empty
-        if(uselessCount < 5) getPaint(rc);
-        // else givePaint(rc);
+        getPaint(rc);
 
         soldierObjective(rc);
 
@@ -285,6 +284,8 @@ public class RobotPlayer {
 
     // Objective: build towers
     public static void soldierObjective(RobotController rc) throws GameActionException {
+        if(rc.getNumberTowers() <= 2) towerToBuild = UnitType.LEVEL_ONE_MONEY_TOWER;
+        else towerToBuild = UnitType.LEVEL_ONE_PAINT_TOWER;
         // Sense information about all visible nearby tiles.
         MapInfo[] nearbyTiles = rc.senseNearbyMapInfos();
         // Search for a nearby ruin to complete.
@@ -307,7 +308,7 @@ public class RobotPlayer {
                 forceMove(targetLoc, rc);
                 // Mark the pattern we need to draw to build a tower here if we haven't already.
                 MapLocation shouldBeMarked = curRuin.getMapLocation().subtract(dir);
-                if (rc.senseMapInfo(shouldBeMarked).getMark() == PaintType.EMPTY && rc.canMarkTowerPattern(towerToBuild, targetLoc)){
+                if (rc.canSenseLocation(shouldBeMarked) && rc.senseMapInfo(shouldBeMarked).getMark() == PaintType.EMPTY && rc.canMarkTowerPattern(towerToBuild, targetLoc)) {
                     rc.markTowerPattern(towerToBuild, targetLoc);
                     System.out.println("Trying to build" + towerToBuild + " at " + targetLoc);
                 }
@@ -329,8 +330,7 @@ public class RobotPlayer {
                 rc.completeTowerPattern(UnitType.LEVEL_ONE_MONEY_TOWER, targetLoc);
                 rc.setTimelineMarker("Tower built", 0, 255, 0);
                 System.out.println("Built a tower at " + targetLoc + "!");
-            }
-            else if (rc.canCompleteTowerPattern(UnitType.LEVEL_ONE_PAINT_TOWER, targetLoc)){
+            } else if (rc.canCompleteTowerPattern(UnitType.LEVEL_ONE_PAINT_TOWER, targetLoc)){
                 rc.completeTowerPattern(UnitType.LEVEL_ONE_PAINT_TOWER, targetLoc);
                 rc.setTimelineMarker("Tower built", 0, 255, 0);
                 System.out.println("Built a tower at " + targetLoc + "!");
@@ -338,15 +338,16 @@ public class RobotPlayer {
         }
     }
 
-    // Objective: kill oponent's robots and give paint (to robots other than soldiers)
+    // Objective: kill oponent's robots and give paint
     public static void mopperObjective(RobotController rc) throws GameActionException {
         if(!rc.isActionReady()) return;
 
-        RobotInfo[] nearbyRobots = rc.senseNearbyRobots(-1, rc.getTeam().opponent());
+        RobotInfo[] nearbyRobots = rc.senseNearbyRobots();
         if(nearbyRobots != null) {
             RobotInfo target = null;
             int targetDist = Integer.MAX_VALUE;
             for(RobotInfo robot : nearbyRobots) {
+                if(robot.getTeam() != rc.getTeam().opponent()) continue;
                 int dist = rc.getLocation().distanceSquaredTo(robot.getLocation());
                 if(dist < targetDist) {
                     target = robot;
@@ -372,7 +373,7 @@ public class RobotPlayer {
             target = null;
             targetDist = Integer.MAX_VALUE;
             for(RobotInfo robot : nearbyRobots) {
-                if(robot.getTeam() != rc.getTeam() || robot.getType() == UnitType.MOPPER || robot.getType() == UnitType.SOLDIER || robot.getType() == UnitType.LEVEL_ONE_PAINT_TOWER || robot.getType() == UnitType.LEVEL_TWO_PAINT_TOWER || robot.getType() == UnitType.LEVEL_THREE_PAINT_TOWER)
+                if(robot.getTeam() != rc.getTeam() || robot.getType() == UnitType.MOPPER || robot.getType() == UnitType.LEVEL_ONE_PAINT_TOWER || robot.getType() == UnitType.LEVEL_TWO_PAINT_TOWER || robot.getType() == UnitType.LEVEL_THREE_PAINT_TOWER)
                     continue;
                 int dist = rc.getLocation().distanceSquaredTo(robot.getLocation());
                 if(dist < targetDist) {
@@ -391,7 +392,8 @@ public class RobotPlayer {
                 if(target.getType().paintCapacity - target.getPaintAmount() < giveAmount)
                     giveAmount = target.getType().paintCapacity - target.getPaintAmount();
 
-                if(rc.canTransferPaint(targetLoc, giveAmount)) {
+                Direction targetDir = rc.getLocation().directionTo(targetLoc);
+                if(rc.canMopSwing(targetDir) && rc.getLocation().distanceSquaredTo(targetLoc) < 2) {
                     rc.transferPaint(targetLoc, giveAmount);
                     System.out.println("Target paint given: " + giveAmount);
                 }
@@ -484,8 +486,8 @@ public class RobotPlayer {
             if(towerTile != null) {
                 MapLocation towerLoc = towerTile.getMapLocation(); 
                 int paintNeeded = rc.getType().paintCapacity - rc.getPaint();
-                if(paintNeeded > rc.senseRobotAtLocation(towerLoc).paintAmount)
-                    paintNeeded = rc.senseRobotAtLocation(towerLoc).paintAmount;
+                if(paintNeeded > rc.senseRobotAtLocation(towerLoc).paintAmount - UnitType.SPLASHER.paintCost)
+                    paintNeeded = rc.senseRobotAtLocation(towerLoc).paintAmount - UnitType.SPLASHER.paintCost;
                 if(rc.canTransferPaint(towerLoc, -paintNeeded)) {
                     rc.transferPaint(towerLoc, -paintNeeded);
                     System.out.println("Getting paint, paint remaining: " + rc.getPaint());
@@ -493,43 +495,6 @@ public class RobotPlayer {
             }
             else {
                 System.out.println("Failed to get paint: no tower nearby");
-            }
-        }
-    }
-
-    public static void givePaint(RobotController rc) throws GameActionException {
-        if(!rc.isMovementReady() && !rc.isActionReady()) return;
-
-        RobotInfo[] nearbyRobots = rc.senseNearbyRobots(-1, rc.getTeam());
-        RobotInfo target = null;
-        int targetDist = Integer.MAX_VALUE;
-        for(RobotInfo robot : nearbyRobots) {
-            if(robot.getType() == UnitType.SOLDIER) continue;
-
-            int missingPaint = robot.getType().paintCapacity - robot.getPaintAmount();
-            if(missingPaint <= 0) continue;
-
-            int dist = rc.getLocation().distanceSquaredTo(robot.getLocation());
-            if(dist < targetDist) {
-                target = robot;
-                targetDist = dist;
-            }
-        }
-
-        if(target != null) {
-            MapLocation targetLoc = target.getLocation();
-            System.out.println("Nearest target to give at: " + targetLoc);
-            if(rc.isMovementReady() && rc.getLocation().distanceSquaredTo(targetLoc) > 2) {
-                forceMove(targetLoc, rc);
-            }
-
-            int availableToGive = rc.getPaint();
-            int giveAmount = target.getType().paintCapacity - target.getPaintAmount();
-            if(giveAmount > availableToGive) giveAmount = availableToGive;
-
-            if(giveAmount > 0 && rc.canTransferPaint(targetLoc, giveAmount)) {
-                rc.transferPaint(targetLoc, giveAmount);
-                System.out.println("Target paint given: " + giveAmount);
             }
         }
     }
@@ -549,7 +514,9 @@ public class RobotPlayer {
             if(rc.getType() == UnitType.SOLDIER || rc.getType().isTowerType() && robotToBuild == UnitType.SOLDIER) {
                 if(tile.getPaint() == PaintType.EMPTY) paintScore[index] += 100;
                 else if(rc.canSenseRobotAtLocation(loc)) {
-                    paintScore[index] -= 200;
+                    RobotInfo robotNear = rc.senseRobotAtLocation(loc);
+                    if(robotNear.getType().isTowerType() || robotNear.getType() == UnitType.SOLDIER)
+                        paintScore[index] -= 200;
                 } 
                 else if(tile.getPaint().isAlly()) paintScore[index] += 10;
                 else if (tile.getPaint().isEnemy()) paintScore[index] += 5;
@@ -561,7 +528,9 @@ public class RobotPlayer {
                 }
                 if(tile.getPaint().isEnemy()) paintScore[index] += 100;
                 else if(rc.canSenseRobotAtLocation(loc)) {
-                    paintScore[index] -= 200;
+                    RobotInfo robotNear = rc.senseRobotAtLocation(loc);
+                    if(robotNear.getType() == UnitType.MOPPER || robotNear.getType() == UnitType.SPLASHER)
+                        paintScore[index] -= 200;
                 } 
                 else if(tile.getPaint() == PaintType.EMPTY) paintScore[index] += 10;
                 else if (tile.getPaint().isAlly()) paintScore[index] += 5;
@@ -583,6 +552,20 @@ public class RobotPlayer {
         }
         System.out.println("Best direction: " + directions[bestIndex]);
         return directions[bestIndex];
+    }
+
+    public static void forceBuild(UnitType type, RobotController rc) throws GameActionException {
+        if(!(rc.getChips() > 1000 + type.moneyCost || rc.getRoundNum() > 1000)) return;
+        Direction dir = bestDirection(rc);
+        for(int i = 0; i < 8 && !rc.canBuildRobot(type, rc.getLocation().add(dir)); i++) {
+            dir = dir.rotateRight();
+        }
+        if (rc.canBuildRobot(type, rc.getLocation().add(dir))) {
+            rc.buildRobot(type, rc.getLocation().add(dir));
+            System.out.println("Force built: " + type + " at " + dir);
+        } else {
+            System.out.println("Failed to force build: " + type);
+        }
     }
 
     public static void forceMove(MapLocation loc, RobotController rc) throws GameActionException {
