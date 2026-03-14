@@ -142,7 +142,7 @@ public class RobotPlayer {
         System.out.println("Can build: " + rc.canBuildRobot(robotToBuild, nextLoc));
         System.out.println("Chips now: " + rc.getChips() + ", treshold: " + (1000 + UnitType.SPLASHER.moneyCost) + ", Condition: " + (rc.getChips() > 1000 + robotToBuild.moneyCost));
 
-        if (rc.canBuildRobot(robotToBuild, nextLoc) && (rc.getChips() > 1000 + UnitType.SPLASHER.moneyCost)){
+        if (rc.canBuildRobot(robotToBuild, nextLoc) && (rc.getChips() > 1000 + UnitType.SPLASHER.moneyCost) && rc.getPaint() > UnitType.SPLASHER.paintCost){
             rc.buildRobot(robotToBuild, nextLoc);
             System.out.println("BUILT A: " + robotToBuild);
         }
@@ -282,7 +282,7 @@ public class RobotPlayer {
 
     // Objective: build towers and build special resource patterns
     public static void soldierObjective(RobotController rc) throws GameActionException {
-        if(rc.getNumberTowers() < 3 + rc.getRoundNum() / 20 && rc.getNumberTowers() < 6) towerToBuild = UnitType.LEVEL_ONE_MONEY_TOWER;
+        if(rc.getNumberTowers() < 3 + rc.getRoundNum() / 20 && rc.getNumberTowers() < 5) towerToBuild = UnitType.LEVEL_ONE_MONEY_TOWER;
         else towerToBuild = UnitType.LEVEL_ONE_PAINT_TOWER;
 
         rc.setIndicatorString("Doing objective: building " + towerToBuild);
