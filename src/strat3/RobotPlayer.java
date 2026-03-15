@@ -124,7 +124,15 @@ public class RobotPlayer {
      * This code is wrapped inside the infinite loop in run(), so it is called once per turn.
      */
     public static void runTower(RobotController rc) throws GameActionException{
-        if(rc.senseNearbyRobots().length < rc.getRoundNum() / 500 + 2) robotToBuild = UnitType.SOLDIER;
+        boolean enemyExist = false;
+        for(MapInfo tile : rc.senseNearbyMapInfos()) {
+            MapLocation loc = tile.getMapLocation();
+            if(tile.isWall()) continue;
+            if(tile.getPaint().isEnemy()) enemyExist = true;
+        }
+        enemyExist = enemyExist || (rc.senseNearbyRobots(-1, rc.getTeam().opponent()).length > 0);
+
+        if(rc.senseNearbyRobots().length < rc.getRoundNum() / 500 + 2 && !enemyExist) robotToBuild = UnitType.SOLDIER;
         else {
             if(rc.getRoundNum() % 4 == 0) {
                 robotToBuild = UnitType.MOPPER;
@@ -142,9 +150,12 @@ public class RobotPlayer {
         System.out.println("Can build: " + rc.canBuildRobot(robotToBuild, nextLoc));
         System.out.println("Chips now: " + rc.getChips() + ", treshold: " + (1000 + UnitType.SPLASHER.moneyCost) + ", Condition: " + (rc.getChips() > 1000 + robotToBuild.moneyCost));
 
-        if (rc.canBuildRobot(robotToBuild, nextLoc) && (rc.getChips() > 1000 + UnitType.SPLASHER.moneyCost) && rc.getPaint() > UnitType.SPLASHER.paintCost){
+        if (enemyExist && rc.getPaint() > UnitType.SPLASHER.paintCost || rc.canBuildRobot(robotToBuild, nextLoc) && (rc.getChips() > 1000 + UnitType.SPLASHER.moneyCost) && rc.getPaint() > UnitType.SPLASHER.paintCost){
             rc.buildRobot(robotToBuild, nextLoc);
             System.out.println("BUILT A: " + robotToBuild);
+        }
+        else {
+            rc.setIndicatorString("Failed to build tobot! canBuildRobot: " + rc.canBuildRobot(robotToBuild, nextLoc) + ", cost: " + ((rc.getChips() > 1000 + UnitType.SPLASHER.moneyCost) && rc.getPaint() > UnitType.SPLASHER.paintCost));
         }
 
         // Read incoming messages
@@ -282,7 +293,7 @@ public class RobotPlayer {
 
     // Objective: build towers and build special resource patterns
     public static void soldierObjective(RobotController rc) throws GameActionException {
-        if(rc.getNumberTowers() < 3 + rc.getRoundNum() / 20 && rc.getNumberTowers() < 5) towerToBuild = UnitType.LEVEL_ONE_MONEY_TOWER;
+        if(rc.getNumberTowers() < 3 + rc.getRoundNum() / 20 && rc.getNumberTowers() < 5 && rc.getNumberTowers() > 2) towerToBuild = UnitType.LEVEL_ONE_MONEY_TOWER;
         else towerToBuild = UnitType.LEVEL_ONE_PAINT_TOWER;
 
         rc.setIndicatorString("Doing objective: building " + towerToBuild);
@@ -298,6 +309,10 @@ public class RobotPlayer {
                     curRuin = tile;
                     curDistance = distance;
                 }
+            }
+            else if(isTower(tile, rc)) {
+                if(rc.senseRobotAtLocation(tile.getMapLocation()).getType() == UnitType.LEVEL_ONE_PAINT_TOWER)
+                    towerToBuild = UnitType.LEVEL_ONE_MONEY_TOWER;
             }
         }
         if (curRuin != null){
@@ -335,6 +350,25 @@ public class RobotPlayer {
                 rc.completeTowerPattern(UnitType.LEVEL_ONE_PAINT_TOWER, targetLoc);
                 rc.setTimelineMarker("Tower built", 0, 255, 0);
                 System.out.println("Built a tower at " + targetLoc + "!");
+            }
+        }
+        
+        RobotInfo[] robotNearby = rc.senseNearbyRobots(-1, rc.getTeam());
+        if(robotNearby == null) return;
+        for(RobotInfo robot: robotNearby) {
+            if(robot.getType().isTowerType()) {
+                MapLocation targetLoc = robot.getLocation();
+                int treshold;
+                if(robot.getType() == UnitType.LEVEL_ONE_PAINT_TOWER || robot.getType() == UnitType.LEVEL_ONE_MONEY_TOWER || robot.getType() == UnitType.LEVEL_ONE_DEFENSE_TOWER)
+                    treshold = 3500 + UnitType.SPLASHER.moneyCost * rc.getNumberTowers();
+                else treshold = 6000 + UnitType.SPLASHER.moneyCost * rc.getNumberTowers();
+
+                // Upgrade tower if can
+                if(rc.canUpgradeTower(targetLoc) && rc.getChips() > treshold) {
+                    rc.upgradeTower(targetLoc);
+                    rc.setTimelineMarker("Tower upgraded at: " + targetLoc, 255, 255, 0);
+                    break;
+                }
             }
         }
     }
