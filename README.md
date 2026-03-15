@@ -11,17 +11,28 @@ melakukan upgrade tower agar chip dan paint cepat terkumpul.
 - Gradle Wrapper sudah disertakan (`gradlew` / `gradlew.bat`), tidak perlu instal Gradle terpisah.
 - OS: Windows/Linux/WSL. Untuk client AppImage di Linux/WSL perlu FUSE atau jalankan dengan `--appimage-extract`.
 
-## Build / Compile
-Dari direktori proyek (mis. `STIMA-battle/` atau root workspace):
-1. Windows:
+## How to play
+1. Clone game engine
 	```
-	.\gradlew.bat build
+	git clone https://github.com/Fariz36/STIMA-battle
+	cd STIMA-battle
 	```
-2. Linux/WSL:
+2. Clone bot dari repo ini (di direktori sejajar dengan STIMA-battle)
+    ```
+	git clone https://github.com/Arbane557/Tubes1_Stima_Impressed.git
+	```
+3. Salin folder `src/` dari repo ini untuk menggantikan `src/` di template engine:
+    - Hapus atau timpa `STIMA-battle/src` dengan `Tubes1_Stima_Impressed/src`.
+    - Pastikan struktur akhir: `STIMA-battle/src/...` berisi kode bot ini.
+4. Build & jalankan client:
 	```
 	./gradlew build
+    ./gradlew run
+	cd client
 	```
-Hasil kompilasi ada di `build/classes/java/main`. Sesuaikan perintah menjalankan engine Battlecode 2025 (jar/runner) dengan classpath output tersebut.
+4. Setelah build, jalankan aplikasi client yang dihasilkan.
+5. Masuk ke opsi runner dan pilih direktori `STIMA-battle` sebagai root
+
 
 ## Author
 | Nama                     | NIM       |
