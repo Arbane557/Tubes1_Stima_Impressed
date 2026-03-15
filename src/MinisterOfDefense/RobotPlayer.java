@@ -2,6 +2,7 @@ package MinisterOfDefense;
 
 import battlecode.common.*;
 
+import java.time.Clock;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -196,6 +197,12 @@ public class RobotPlayer {
         MapLocation ruin = nearestOpenRuin(rc);
         if (ruin != null) {
             handleRuin(rc, ruin, UnitType.LEVEL_ONE_DEFENSE_TOWER);
+            return;
+        }
+        // di awal mending banyakin keliling baru jaga tower
+        if (rc.getRoundNum() < 120) {
+            Direction dir = directions[rng.nextInt(directions.length)];
+            if (rc.canMove(dir)) rc.move(dir);
             return;
         }
 
