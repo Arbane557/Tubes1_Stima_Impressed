@@ -1,4 +1,4 @@
-package examplefuncsplayer;
+package MinisterOfDefense;
 
 import battlecode.common.*;
 
