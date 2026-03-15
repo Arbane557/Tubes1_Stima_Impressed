@@ -1,4 +1,5 @@
-package strat3Refined;
+package GeneralImpressive;
+// Main bot
 
 import java.util.Random;
 
