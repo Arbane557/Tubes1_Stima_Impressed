@@ -1,4 +1,4 @@
-package strat4;
+package mrCapitalist;
 
 import battlecode.common.*;
 
@@ -20,9 +20,8 @@ public class RobotPlayer {
     // Map Related
     static int mapW, mapH, myID, localSpawnCount;
     static MapLocation home, enemyBase, stickyRuin;
-    static int stripY = -1;
-    static boolean stripRight = true;
-    static final int STRIP_H = 4;
+    static int laneY = -1;
+    static final int LANE_H = 4;
 
     // SRP Related
     static int knownTowerCount = -1;
@@ -175,7 +174,7 @@ public class RobotPlayer {
 
         MapLocation goal = localExploreTarget(rc);
         if (goal == null)
-            goal = stripTarget(rc);
+            goal = laneTarget(rc);
         move(rc, goal);
 
         if (rc.isActionReady())
@@ -300,7 +299,7 @@ public class RobotPlayer {
             return;
         }
 
-        move(rc, stripTarget(rc));
+        move(rc, laneTarget(rc));
     }
 
     /**
@@ -612,29 +611,18 @@ public class RobotPlayer {
         }
     }
 
-    static MapLocation stripTarget(RobotController rc) {
-        if (stripY == -1) {
-            int numStrips = Math.max(1, mapH / STRIP_H);
-            int stripIdx = Math.abs(myID % numStrips);
-            stripY = Math.min(stripIdx * STRIP_H + STRIP_H / 2, mapH - 1);
-            stripRight = (myID % 2 == 0);
+    static MapLocation laneTarget(RobotController rc) {
+        if (laneY == -1) {
+            int numLanes = Math.max(1, (mapH + LANE_H - 1) / LANE_H);
+            int laneIdx = Math.floorMod(myID, numLanes);
+            laneY = Math.min(laneIdx * LANE_H + LANE_H / 2, mapH - 1);
         }
 
-        MapLocation cur = rc.getLocation();
+        MapLocation here = rc.getLocation();
+        if (Math.abs(here.y - laneY) > 1)
+            return new MapLocation(here.x, laneY);
 
-        if (Math.abs(cur.y - stripY) > STRIP_H / 2) {
-            return new MapLocation(cur.x, stripY);
-        }
-
-        if (stripRight && cur.x >= mapW - 2) {
-            stripRight = false;
-            stripY = Math.min(mapH - 1, stripY + STRIP_H);
-        } else if (!stripRight && cur.x <= 1) {
-            stripRight = true;
-            stripY = Math.min(mapH - 1, stripY + STRIP_H);
-        }
-
-        return new MapLocation(stripRight ? mapW - 1 : 0, stripY);
+        return new MapLocation(enemyBase.x, laneY);
     }
 
     static void move(RobotController rc, MapLocation destination) throws GameActionException {
@@ -645,23 +633,16 @@ public class RobotPlayer {
         Direction target = here.directionTo(destination);
         if (target == Direction.CENTER)
             target = DIRS[myID % 8];
-
-        Direction[] tryNextDirections = {
-                target,
-                target.rotateLeft(),
-                target.rotateRight(),
-                target.rotateLeft().rotateLeft(),
-                target.rotateRight().rotateRight(),
-                target.opposite().rotateLeft(),
-                target.opposite().rotateRight()
-        };
-
         Direction best = null;
         int bestScore = Integer.MAX_VALUE;
 
-        for (Direction d : tryNextDirections) {
+        Direction d = target;
+        for (int i = 0; i < 8; i++) {
             if (!rc.canMove(d))
+            {
+                d = d.rotateRight();
                 continue;
+            }
 
             MapLocation next = here.add(d);
             int score = next.distanceSquaredTo(destination) * 10;
@@ -676,6 +657,8 @@ public class RobotPlayer {
                 bestScore = score;
                 best = d;
             }
+
+            d = d.rotateRight();
         }
 
         if (best != null)
