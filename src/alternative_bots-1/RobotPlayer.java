@@ -1,4 +1,4 @@
-package MinisterOfDefense;
+package alternative_bots_1;
 // Alternative Bot 1
 
 import java.util.Random;

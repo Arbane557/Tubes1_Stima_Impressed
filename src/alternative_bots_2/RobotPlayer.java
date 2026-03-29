@@ -1,4 +1,4 @@
-package MrCapitalist;
+package alternative_bots_2;
 // Alternative Bot 2
 
 import battlecode.common.Clock;

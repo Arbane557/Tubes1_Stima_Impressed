@@ -1,4 +1,4 @@
-package GeneralImpressive;
+package main_bot;
 // Main bot
 
 import java.util.Random;
